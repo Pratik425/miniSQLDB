@@ -1,0 +1,8 @@
+build/
+zumba.txt
+.vscode/
+.idea/
+*.o
+*.obj
+*.exe
+*.out
