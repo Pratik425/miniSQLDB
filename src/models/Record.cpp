@@ -2,6 +2,8 @@
 #include <sstream>
 #include <cstring>
 #include <stdexcept>
+#include <iomanip>
+
 
 // Constructor
 Record::Record(const std::vector<Column>& schema) 
@@ -16,7 +18,7 @@ void Record::setValue(size_t index, const Value& value) {
         throw std::out_of_range("Column index out of range");
     }
     
-    // Type checking (optional)
+    // Type checking 
     const auto& column = schema[index];
     bool typeValid = false;
     
@@ -91,6 +93,16 @@ std::vector<char> Record::serialize() const {
     return data;
 }
 
+// Deserialize entire record
+void Record::deserialize(const std::vector<char>& data) {
+    size_t offset = 0;
+    
+    for(size_t i = 0; i < schema.size(); ++i) {
+        Value val = deserializeValue(data, offset, schema[i]);
+        values[i] = val;
+    }
+}
+
 // Helper: Serialize single value
 std::vector<char> Record::serializeValue(const Value& value, const Column& column) const {
     std::vector<char> data(column.getStorageSize(), 0);
@@ -116,4 +128,58 @@ std::vector<char> Record::serializeValue(const Value& value, const Column& colum
     }, value);
     
     return data;
+}
+
+// Helper: Deserialize a single value
+Record::Value Record::deserializeValue(const std::vector<char>& data, 
+                                       size_t& offset, 
+                                       const Column& column) const {
+    Value result;
+    
+    switch(column.type) {
+        case DataType::INT: {
+            int val = 0;
+            memcpy(&val, data.data() + offset, sizeof(int));
+            offset += sizeof(int);
+            result = val;
+            break;
+        }
+        case DataType::VARCHAR: {
+            std::string str(column.maxLength, '\0');
+            memcpy(str.data(), data.data() + offset, column.maxLength);
+            // Trim null characters
+            size_t len = str.find('\0');
+            if(len != std::string::npos) {
+                str.resize(len);
+            }
+            offset += column.maxLength;
+            result = str;
+            break;
+        }
+        case DataType::BOOLEAN: {
+            char val = 0;
+            memcpy(&val, data.data() + offset, 1);
+            offset += 1;
+            result = (val != 0);
+            break;
+        }
+        case DataType::FLOAT: {
+            float val = 0.0f;
+            memcpy(&val, data.data() + offset, sizeof(float));
+            offset += sizeof(float);
+            result = val;
+            break;
+        }
+        case DataType::DATE: {
+            time_t val = 0;
+            memcpy(&val, data.data() + offset, sizeof(time_t));
+            offset += sizeof(time_t);
+            result = val;
+            break;
+        }
+        default:
+            throw std::runtime_error("Unknown data type for deserialization");
+    }
+    
+    return result;
 }
