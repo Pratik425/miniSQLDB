@@ -29,6 +29,7 @@ add_executable(minidb_tests
     src/models/Column.cpp
     src/models/Record.cpp
     src/models/Table.cpp
+    src/storage/StorageManager.cpp
 )
 
 target_include_directories(minidb_tests PRIVATE src)
