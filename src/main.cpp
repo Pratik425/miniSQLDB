@@ -3,6 +3,7 @@
 #include "models/Column.h"
 #include "models/Record.h"
 #include "models/Table.h"
+#include "storage/StorageManager.h"
 
 using namespace std;
 
@@ -124,6 +125,89 @@ void testTableOperations() {
 }
 
 
+void testStorageManager() {
+    cout << "\n=== Testing StorageManager ===" << endl;
+    
+    try {
+        // Create storage manager
+        StorageManager db("database");
+        cout << "✓ StorageManager initialized" << endl;
+        
+        // Define schemas
+        vector<Column> userSchema = {
+            Column("id", DataType::INT, 0, true, false),
+            Column("name", DataType::VARCHAR, 50, false, true),
+            Column("age", DataType::INT, 0, false, true)
+        };
+        
+        vector<Column> productSchema = {
+            Column("id", DataType::INT, 0, true, false),
+            Column("name", DataType::VARCHAR, 100, false, true),
+            Column("price", DataType::FLOAT, 0, false, true),
+            Column("quantity", DataType::INT, 0, false, true)
+        };
+        
+        // Create tables
+        db.createTable("users", userSchema);
+        db.createTable("products", productSchema);
+        cout << "✓ Created 2 tables" << endl;
+        
+        // Insert data into users
+        auto* users = db.getTable("users");
+        if (users) {
+            Record r1(userSchema);
+            r1.setValue(0, 1);
+            r1.setValue(1, string("Alice"));
+            r1.setValue(2, 25);
+            users->insertRecord(r1);
+            
+            Record r2(userSchema);
+            r2.setValue(0, 2);
+            r2.setValue(1, string("Bob"));
+            r2.setValue(2, 30);
+            users->insertRecord(r2);
+            cout << "✓ Inserted 2 users" << endl;
+        }
+        
+        // Insert data into products
+        auto* products = db.getTable("products");
+        if (products) {
+            Record p1(productSchema);
+            p1.setValue(0, 1);
+            p1.setValue(1, string("Laptop"));
+            p1.setValue(2, 999.99f);
+            p1.setValue(3, 10);
+            products->insertRecord(p1);
+            
+            Record p2(productSchema);
+            p2.setValue(0, 2);
+            p2.setValue(1, string("Mouse"));
+            p2.setValue(2, 29.99f);
+            p2.setValue(3, 50);
+            products->insertRecord(p2);
+            cout << "✓ Inserted 2 products" << endl;
+        }
+        
+        // List tables
+        auto tables = db.listTables();
+        cout << "✓ Tables in database: ";
+        for (const auto& t : tables) {
+            cout << t << " ";
+        }
+        cout << endl;
+        
+        // Print database
+        db.printDatabase();
+        
+        // Save and cleanup
+        db.saveDatabase();
+        cout << "✓ Database saved" << endl;
+        
+    } catch (const exception& e) {
+        cerr << "✗ Error: " << e.what() << endl;
+    }
+}
+
 int main() {
     cout << "MiniDB - Database Engine" << endl;
     cout << "=========================" << endl;
@@ -132,6 +216,8 @@ int main() {
         testColumnCreation();
         testRecordOperations();
         testTableOperations();
+        testStorageManager();
+        cout << "\n✅ All tests passed successfully!" << endl;
     } catch(const exception& e) {
         cerr << "Error: " << e.what() << endl;
         return 1;
