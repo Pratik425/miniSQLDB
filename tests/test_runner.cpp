@@ -7,6 +7,7 @@
 #include "models/Column.h"
 #include "models/Record.h"
 #include "models/Table.h"
+#include "storage/StorageManager.h"
 
 // Unified test macro that works for all tests
 #define TEST(name) void test_##name()
@@ -443,6 +444,92 @@ TEST(table_persistence) {
     }
 }
 
+// ========== Test 13: StorageManager ==========
+TEST(storage_manager) {
+    std::string dbPath = "test_db";
+    
+    // Create storage manager
+    StorageManager db(dbPath);
+    
+    // Create tables
+    std::vector<Column> userSchema = {
+        Column("id", DataType::INT, 0, true, false),
+        Column("name", DataType::VARCHAR, 50),
+        Column("age", DataType::INT)
+    };
+    
+    std::vector<Column> productSchema = {
+        Column("id", DataType::INT, 0, true, false),
+        Column("name", DataType::VARCHAR, 100),
+        Column("price", DataType::FLOAT),
+        Column("quantity", DataType::INT)
+    };
+    
+    db.createTable("users", userSchema);
+    db.createTable("products", productSchema);
+    
+    assert(db.tableExists("users"));
+    assert(db.tableExists("products"));
+    assert(!db.tableExists("nonexistent"));
+    
+    // Get table and insert
+    auto* users = db.getTable("users");
+    assert(users != nullptr);
+    
+    Record r1(userSchema);
+    r1.setValue(0, 1);
+    r1.setValue(1, std::string("Alice"));
+    r1.setValue(2, 25);
+    users->insertRecord(r1);
+    
+    Record r2(userSchema);
+    r2.setValue(0, 2);
+    r2.setValue(1, std::string("Bob"));
+    r2.setValue(2, 30);
+    users->insertRecord(r2);
+    
+    assert(users->getRecordCount() == 2);
+    
+    // List tables and verify
+    auto tables = db.listTables();
+    assert(tables.size() == 2);
+    
+    // Check table names using std::string
+    bool hasUsers = false;
+    bool hasProducts = false;
+    for (const auto& name : tables) {
+        if (name == "users") hasUsers = true;
+        if (name == "products") hasProducts = true;
+    }
+    assert(hasUsers);
+    assert(hasProducts);
+    
+    // Test persistence - save and reload
+    db.saveDatabase();
+    
+    // Create new instance and load
+    StorageManager db2(dbPath);
+    auto* loadedUsers = db2.getTable("users");
+    assert(loadedUsers != nullptr);
+    assert(loadedUsers->getRecordCount() == 2);
+    
+    // Verify data
+    auto records = loadedUsers->selectAll();
+    assert(records.size() == 2);
+    assert(std::get<int>(records[0].getValue(0)) == 1);
+    assert(std::get<std::string>(records[0].getValue(1)) == "Alice");
+    assert(std::get<int>(records[0].getValue(2)) == 25);
+    
+    std::cout << "\n  ✓ StorageManager working";
+    std::cout << "\n  Tables: " << db2.listTables().size();
+    std::cout << "\n  Users: " << loadedUsers->getRecordCount();
+    std::cout << std::endl;
+    
+    // Cleanup
+    db2.dropTable("users");
+    db2.dropTable("products");
+}
+
 // ========== Main Test Runner ==========
 int main() {
     std::cout << "\n========================================";
@@ -465,6 +552,7 @@ int main() {
     RUN_TEST_WITH_COUNT(table_update);
     RUN_TEST_WITH_COUNT(table_delete);
     RUN_TEST_WITH_COUNT(table_persistence);
+    RUN_TEST_WITH_COUNT(storage_manager);
     
     std::cout << "\n========================================";
     std::cout << "\n  Results: " << passed << "/" << total << " tests passed";
