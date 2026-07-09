@@ -4,6 +4,7 @@
 #include "models/Record.h"
 #include "models/Table.h"
 #include "storage/StorageManager.h"
+#include "parser/SQLTokenizer.h"
 
 using namespace std;
 
@@ -208,6 +209,30 @@ void testStorageManager() {
     }
 }
 
+void testSQLTokenizer() {
+    cout << "\n=== Testing SQL Tokenizer ===" << endl;
+    
+    try {
+        std::string query = "SELECT * FROM users WHERE age > 25 AND name = 'Alice'";
+        
+        cout << "Query: " << query << endl;
+        cout << "Tokens:" << endl;
+        
+        SQLTokenizer tokenizer(query);
+        auto tokens = tokenizer.tokenize();
+        
+        for (const auto& token : tokens) {
+            cout << "  " << token.toString() << endl;
+        }
+        
+        cout << "✓ Tokenization successful (" << tokens.size() << " tokens)" << endl;
+        
+    } catch (const exception& e) {
+        cerr << "✗ Error: " << e.what() << endl;
+    }
+}
+
+
 int main() {
     cout << "MiniDB - Database Engine" << endl;
     cout << "=========================" << endl;
@@ -217,6 +242,7 @@ int main() {
         testRecordOperations();
         testTableOperations();
         testStorageManager();
+        testSQLTokenizer();
         cout << "\n✅ All tests passed successfully!" << endl;
     } catch(const exception& e) {
         cerr << "Error: " << e.what() << endl;

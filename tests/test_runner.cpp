@@ -8,6 +8,7 @@
 #include "models/Record.h"
 #include "models/Table.h"
 #include "storage/StorageManager.h"
+#include "parser/SQLTokenizer.h"
 
 // Unified test macro that works for all tests
 #define TEST(name) void test_##name()
@@ -529,6 +530,97 @@ TEST(storage_manager) {
     db2.dropTable("users");
     db2.dropTable("products");
 }
+// ========== Test 14: SQL Tokenizer ==========
+TEST(sql_tokenizer) {
+    // Test basic tokens
+    std::string query = "SELECT * FROM users WHERE id = 5";
+    SQLTokenizer tokenizer(query);
+    auto tokens = tokenizer.tokenize();
+    
+    // Debug output
+    std::cout << "\n  Tokenizing: " << query << std::endl;
+    std::cout << "  Tokens found: ";
+    for (const auto& t : tokens) {
+        std::cout << t.toString() << " ";
+    }
+    std::cout << std::endl;
+    
+    // Verify SELECT query tokens
+    assert(tokens.size() >= 7);
+    assert(tokens[0].type == TokenType::SELECT);
+    assert(tokens[1].type == TokenType::STAR_SELECT || tokens[1].type == TokenType::STAR);
+    assert(tokens[2].type == TokenType::FROM);
+    assert(tokens[3].type == TokenType::IDENTIFIER);
+    assert(tokens[3].value == "users");
+    assert(tokens[4].type == TokenType::WHERE);
+    assert(tokens[5].type == TokenType::IDENTIFIER);
+    assert(tokens[5].value == "id");
+    assert(tokens[6].type == TokenType::EQUALS);
+    assert(tokens[7].type == TokenType::NUMBER_LITERAL);
+    assert(tokens[7].value == "5");
+    
+    std::cout << "  ✓ SELECT query tokenized successfully" << std::endl;
+    
+    // Test INSERT query
+    query = "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 25)";
+    SQLTokenizer tokenizer2(query);
+    auto tokens2 = tokenizer2.tokenize();
+    
+    // Debug output for INSERT
+    std::cout << "\n  Tokenizing: " << query << std::endl;
+    std::cout << "  Tokens found: ";
+    for (const auto& t : tokens2) {
+        std::cout << t.toString() << " ";
+    }
+    std::cout << std::endl;
+    
+    // Verify INSERT query tokens
+    // Expected: INSERT, INTO, users, (, id, ,, name, ,, age, ), VALUES, (, 1, ,, 'Alice', ,, 25, )
+    assert(tokens2.size() >= 16);
+    assert(tokens2[0].type == TokenType::INSERT);
+    assert(tokens2[1].type == TokenType::INTO);
+    assert(tokens2[2].type == TokenType::IDENTIFIER);
+    assert(tokens2[2].value == "users");
+    assert(tokens2[3].type == TokenType::LPAREN);
+    assert(tokens2[4].type == TokenType::IDENTIFIER);
+    assert(tokens2[4].value == "id");
+    assert(tokens2[5].type == TokenType::COMMA);
+    assert(tokens2[6].type == TokenType::IDENTIFIER);
+    assert(tokens2[6].value == "name");
+    assert(tokens2[7].type == TokenType::COMMA);
+    assert(tokens2[8].type == TokenType::IDENTIFIER);
+    assert(tokens2[8].value == "age");
+    assert(tokens2[9].type == TokenType::RPAREN);
+    assert(tokens2[10].type == TokenType::VALUES);
+    assert(tokens2[11].type == TokenType::LPAREN);
+    assert(tokens2[12].type == TokenType::NUMBER_LITERAL);
+    assert(tokens2[12].value == "1");
+    assert(tokens2[13].type == TokenType::COMMA);
+    assert(tokens2[14].type == TokenType::STRING_LITERAL);
+    assert(tokens2[14].value == "Alice");
+    assert(tokens2[15].type == TokenType::COMMA);
+    assert(tokens2[16].type == TokenType::NUMBER_LITERAL);
+    assert(tokens2[16].value == "25");
+    assert(tokens2[17].type == TokenType::RPAREN);
+    
+    std::cout << "  ✓ INSERT query tokenized successfully" << std::endl;
+    
+    // Test string literal with quotes
+    query = "SELECT * FROM users WHERE name = 'John Doe'";
+    SQLTokenizer tokenizer3(query);
+    auto tokens3 = tokenizer3.tokenize();
+    
+    bool foundString = false;
+    for (const auto& t : tokens3) {
+        if (t.type == TokenType::STRING_LITERAL && t.value == "John Doe") {
+            foundString = true;
+            break;
+        }
+    }
+    assert(foundString);
+    
+    std::cout << "  ✓ String literals handled correctly" << std::endl;
+}
 
 // ========== Main Test Runner ==========
 int main() {
@@ -553,6 +645,7 @@ int main() {
     RUN_TEST_WITH_COUNT(table_delete);
     RUN_TEST_WITH_COUNT(table_persistence);
     RUN_TEST_WITH_COUNT(storage_manager);
+    RUN_TEST_WITH_COUNT(sql_tokenizer);
     
     std::cout << "\n========================================";
     std::cout << "\n  Results: " << passed << "/" << total << " tests passed";
