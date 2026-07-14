@@ -9,6 +9,7 @@
 #include "models/Table.h"
 #include "storage/StorageManager.h"
 #include "parser/SQLTokenizer.h"
+#include "parser/ASTNodes.h"
 
 // Unified test macro that works for all tests
 #define TEST(name) void test_##name()
@@ -622,6 +623,60 @@ TEST(sql_tokenizer) {
     std::cout << "  ✓ String literals handled correctly" << std::endl;
 }
 
+// ========== Test 15: AST Nodes ==========
+TEST(ast_nodes) {
+    // Test CreateTableNode
+    CreateTableNode createNode("users");
+    createNode.columns.emplace_back("id", "INT", 0, true, false);
+    createNode.columns.emplace_back("name", "VARCHAR", 50, false, true);
+    createNode.columns.emplace_back("age", "INT", 0, false, true);
+    
+    std::string expected = "CREATE TABLE users (id INT PRIMARY KEY NOT NULL, name VARCHAR(50), age INT)";
+    assert(createNode.toString() == expected);
+    std::cout << "\n  ✓ CreateTableNode: " << createNode.toString() << std::endl;
+    
+    // Test SelectNode
+    SelectNode selectNode("users");
+    selectNode.columns = {"id", "name", "age"};
+    selectNode.whereClause = std::make_unique<WhereClauseNode>("age", ">", "25");
+    
+    expected = "SELECT id, name, age FROM users WHERE age > 25";
+    assert(selectNode.toString() == expected);
+    std::cout << "  ✓ SelectNode: " << selectNode.toString() << std::endl;
+    
+    // Test InsertNode
+    InsertNode insertNode("users");
+    insertNode.columns = {"id", "name", "age"};
+    insertNode.values = {{"1", "'Alice'", "25"}};
+    
+    expected = "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 25)";
+    assert(insertNode.toString() == expected);
+    std::cout << "  ✓ InsertNode: " << insertNode.toString() << std::endl;
+    
+    // Test UpdateNode
+    UpdateNode updateNode("users");
+    updateNode.setClauses.emplace_back("age", "age + 1");
+    updateNode.whereClause = std::make_unique<WhereClauseNode>("name", "=", "'Alice'");
+    
+    expected = "UPDATE users SET age = age + 1 WHERE name = 'Alice'";
+    assert(updateNode.toString() == expected);
+    std::cout << "  ✓ UpdateNode: " << updateNode.toString() << std::endl;
+    
+    // Test DeleteNode
+    DeleteNode deleteNode("users");
+    deleteNode.whereClause = std::make_unique<WhereClauseNode>("age", "<", "18");
+    
+    expected = "DELETE FROM users WHERE age < 18";
+    assert(deleteNode.toString() == expected);
+    std::cout << "  ✓ DeleteNode: " << deleteNode.toString() << std::endl;
+    
+    // Test DropTableNode
+    DropTableNode dropNode("users");
+    expected = "DROP TABLE users";
+    assert(dropNode.toString() == expected);
+    std::cout << "  ✓ DropTableNode: " << dropNode.toString() << std::endl;
+}
+
 // ========== Main Test Runner ==========
 int main() {
     std::cout << "\n========================================";
@@ -646,6 +701,7 @@ int main() {
     RUN_TEST_WITH_COUNT(table_persistence);
     RUN_TEST_WITH_COUNT(storage_manager);
     RUN_TEST_WITH_COUNT(sql_tokenizer);
+    RUN_TEST_WITH_COUNT(ast_nodes);
     
     std::cout << "\n========================================";
     std::cout << "\n  Results: " << passed << "/" << total << " tests passed";
